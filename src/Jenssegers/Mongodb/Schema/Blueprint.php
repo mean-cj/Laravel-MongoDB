@@ -3,8 +3,8 @@
 use Closure;
 use Illuminate\Database\Connection;
 
-class Blueprint extends \Illuminate\Database\Schema\Blueprint {
-
+class Blueprint extends \Illuminate\Database\Schema\Blueprint
+{
     /**
      * The MongoConnection object for this blueprint.
      *
@@ -51,20 +51,18 @@ class Blueprint extends \Illuminate\Database\Schema\Blueprint {
         $columns = $this->fluent($columns);
 
         // Columns are passed as a default array.
-        if (is_array($columns) && is_int(key($columns)))
-        {
+        if (is_array($columns) && is_int(key($columns))) {
             // Transform the columns to the required array format.
             $transform = [];
 
-            foreach ($columns as $column)
-            {
+            foreach ($columns as $column) {
                 $transform[$column] = 1;
             }
 
             $columns = $transform;
         }
 
-        $this->collection->ensureIndex($columns, $options);
+        $this->collection->createIndex($columns, $options);
 
         return $this;
     }
@@ -92,20 +90,20 @@ class Blueprint extends \Illuminate\Database\Schema\Blueprint {
         $columns = $this->fluent($columns);
 
         // Columns are passed as a default array.
-        if (is_array($columns) && is_int(key($columns)))
-        {
+        if (is_array($columns) && is_int(key($columns))) {
             // Transform the columns to the required array format.
             $transform = [];
 
-            foreach ($columns as $column)
-            {
-                $transform[$column] = 1;
+            foreach ($columns as $column) {
+                $transform[$column] = $column . '_1';
             }
 
             $columns = $transform;
         }
 
-        $this->collection->deleteIndex($columns);
+        foreach ($columns as $column) {
+            $this->collection->dropIndex($column);
+        }
 
         return $this;
     }
@@ -114,13 +112,16 @@ class Blueprint extends \Illuminate\Database\Schema\Blueprint {
      * Specify a unique index for the collection.
      *
      * @param  string|array  $columns
+     * @param  array         $options
      * @return Blueprint
      */
-    public function unique($columns = null, $name = null)
+    public function unique($columns = null, $options = [])
     {
         $columns = $this->fluent($columns);
 
-        $this->index($columns, ['unique' => true]);
+        $options['unique'] = true;
+
+        $this->index($columns, $options);
 
         return $this;
     }
@@ -144,12 +145,16 @@ class Blueprint extends \Illuminate\Database\Schema\Blueprint {
      * Specify a sparse index for the collection.
      *
      * @param  string|array  $columns
+     * @param  array         $options
      * @return Blueprint
      */
-    public function sparse($columns = null)
+    public function sparse($columns = null, $options = [])
     {
         $columns = $this->fluent($columns);
-        $this->index($columns, ['sparse' => true]);
+
+        $options['sparse'] = true;
+
+        $this->index($columns, $options);
 
         return $this;
     }
@@ -178,7 +183,7 @@ class Blueprint extends \Illuminate\Database\Schema\Blueprint {
      */
     public function create()
     {
-        $collection = $this->collection->getName();
+        $collection = $this->collection->getCollectionName();
 
         $db = $this->connection->getMongoDB();
 
@@ -219,16 +224,11 @@ class Blueprint extends \Illuminate\Database\Schema\Blueprint {
      */
     protected function fluent($columns = null)
     {
-        if (is_null($columns))
-        {
+        if (is_null($columns)) {
             return $this->columns;
-        }
-        elseif (is_string($columns))
-        {
+        } elseif (is_string($columns)) {
             return $this->columns = [$columns];
-        }
-        else
-        {
+        } else {
             return $this->columns = $columns;
         }
     }
@@ -243,5 +243,4 @@ class Blueprint extends \Illuminate\Database\Schema\Blueprint {
         // Dummy.
         return $this;
     }
-
 }
