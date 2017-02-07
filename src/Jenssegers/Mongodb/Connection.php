@@ -40,6 +40,8 @@ class Connection extends \Illuminate\Database\Connection
         $this->db = $this->connection->selectDatabase($config['database']);
 
         $this->useDefaultPostProcessor();
+
+        $this->useDefaultSchemaGrammar();
     }
 
     /**
@@ -125,7 +127,7 @@ class Connection extends \Illuminate\Database\Connection
      * @param  string  $dsn
      * @param  array   $config
      * @param  array   $options
-     * @return MongoDB
+     * @return \MongoDB\Client
      */
     protected function createConnection($dsn, array $config, array $options)
     {
@@ -134,6 +136,14 @@ class Connection extends \Illuminate\Database\Connection
 
         if (isset($config['driver_options']) && is_array($config['driver_options'])) {
             $driverOptions = $config['driver_options'];
+        }
+
+        // Check if the credentials are not already set in the options
+        if (!isset($options['username']) && !empty($config['username'])) {
+            $options['username'] = $config['username'];
+        }
+        if (!isset($options['password']) && !empty($config['password'])) {
+            $options['password'] = $config['password'];
         }
 
         return new Client($dsn, $options, $driverOptions);
@@ -155,40 +165,25 @@ class Connection extends \Illuminate\Database\Connection
      */
     protected function getDsn(array $config)
     {
-        // First we will create the basic DSN setup as well as the port if it is in
-        // in the configuration options. This will give us the basic DSN we will
-        // need to establish the MongoDB and return them back for use.
-        extract($config);
-
         // Check if the user passed a complete dsn to the configuration.
-        if (! empty($dsn)) {
-            return $dsn;
+        if (! empty($config['dsn'])) {
+            return $config['dsn'];
         }
 
         // Treat host option as array of hosts
-        $hosts = is_array($host) ? $host : [$host];
+        $hosts = is_array($config['host']) ? $config['host'] : [$config['host']];
 
         foreach ($hosts as &$host) {
             // Check if we need to add a port to the host
-            if (strpos($host, ':') === false and isset($port)) {
-                $host = "{$host}:{$port}";
+            if (strpos($host, ':') === false && ! empty($config['port'])) {
+                $host = $host . ':' . $config['port'];
             }
         }
 
-        // The database name needs to be in the connection string, otherwise it will
-        // authenticate to the admin database, which may result in permission errors.
-        $auth = '';
-        if (! empty($username)) {
-            $auth .= $username;
-        }
-        if (! empty($password)) {
-            $auth .= ':'.$password;
-        }
-        if ($auth) {
-            $auth .= '@';
-        }
+        // Check if we want to authenticate against a specific database.
+        $auth_database = isset($config['options']) && ! empty($config['options']['database']) ? $config['options']['database'] : null;
 
-        return "mongodb://" . $auth . implode(',', $hosts) . "/{$database}";
+        return 'mongodb://' . implode(',', $hosts) . ($auth_database ? '/' . $auth_database : '');
     }
 
     /**
@@ -210,6 +205,16 @@ class Connection extends \Illuminate\Database\Connection
     public function getDriverName()
     {
         return 'mongodb';
+    }
+
+    /**
+     * Get the default schema grammar instance.
+     *
+     * @return Schema\Grammar
+     */
+    protected function getDefaultSchemaGrammar()
+    {
+        return new Schema\Grammar;
     }
 
     /**

@@ -2,7 +2,6 @@
 
 class ModelTest extends TestCase
 {
-
     public function tearDown()
     {
         User::truncate();
@@ -157,8 +156,8 @@ class ModelTest extends TestCase
         $all = User::all();
 
         $this->assertEquals(2, count($all));
-        $this->assertContains('John Doe', $all->lists('name'));
-        $this->assertContains('Jane Doe', $all->lists('name'));
+        $this->assertContains('John Doe', $all->pluck('name'));
+        $this->assertContains('Jane Doe', $all->pluck('name'));
     }
 
     public function testFind()
@@ -487,6 +486,29 @@ class ModelTest extends TestCase
         $this->assertEquals('Paris', $user->getAttribute('address.city'));
         $this->assertEquals('Paris', $user['address.city']);
         $this->assertEquals('Paris', $user->{'address.city'});
+
+        // Fill
+        $user->fill([
+            'address.city' => 'Strasbourg',
+        ]);
+
+        $this->assertEquals('Strasbourg', $user['address.city']);
+    }
+
+    public function testMultipleLevelDotNotation()
+    {
+        $book = Book::create([
+            'title' => 'A Game of Thrones',
+            'chapters' => [
+                'one' => [
+                    'title' => 'The first chapter',
+                ],
+            ],
+        ]);
+
+        $this->assertEquals(['one' => ['title' => 'The first chapter']], $book->chapters);
+        $this->assertEquals(['title' => 'The first chapter'], $book['chapters.one']);
+        $this->assertEquals('The first chapter', $book['chapters.one.title']);
     }
 
     public function testGetDirtyDates()

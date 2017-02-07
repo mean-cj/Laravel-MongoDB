@@ -5,7 +5,6 @@ use MongoDB\BSON\Regex;
 
 class QueryBuilderTest extends TestCase
 {
-
     public function tearDown()
     {
         DB::collection('users')->truncate();
@@ -30,7 +29,7 @@ class QueryBuilderTest extends TestCase
 
     public function testNoDocument()
     {
-        $items = DB::collection('items')->where('name', 'nothing')->get();
+        $items = DB::collection('items')->where('name', 'nothing')->get()->toArray();
         $this->assertEquals([], $items);
 
         $item = DB::collection('items')->where('name', 'nothing')->first();
@@ -289,12 +288,12 @@ class QueryBuilderTest extends TestCase
             ['name' => 'spoon', 'type' => 'round'],
         ]);
 
-        $items = DB::collection('items')->distinct('name')->get();
+        $items = DB::collection('items')->distinct('name')->get()->toArray();
         sort($items);
         $this->assertEquals(3, count($items));
         $this->assertEquals(['fork', 'knife', 'spoon'], $items);
 
-        $types = DB::collection('items')->distinct('type')->get();
+        $types = DB::collection('items')->distinct('type')->get()->toArray();
         sort($types);
         $this->assertEquals(2, count($types));
         $this->assertEquals(['round', 'sharp'], $types);
@@ -358,7 +357,7 @@ class QueryBuilderTest extends TestCase
             ['name' => 'John Doe', 'age' => 25],
         ]);
 
-        $age = DB::collection('users')->where('name', 'John Doe')->pluck('age');
+        $age = DB::collection('users')->where('name', 'John Doe')->pluck('age')->toArray();
         $this->assertEquals([25], $age);
     }
 
@@ -371,16 +370,16 @@ class QueryBuilderTest extends TestCase
             ['name' => 'spoon', 'type' => 'round', 'amount' => 14],
         ]);
 
-        $list = DB::collection('items')->lists('name');
+        $list = DB::collection('items')->pluck('name')->toArray();
         sort($list);
         $this->assertEquals(4, count($list));
         $this->assertEquals(['fork', 'knife', 'spoon', 'spoon'], $list);
 
-        $list = DB::collection('items')->lists('type', 'name');
+        $list = DB::collection('items')->pluck('type', 'name')->toArray();
         $this->assertEquals(3, count($list));
         $this->assertEquals(['knife' => 'sharp', 'fork' => 'sharp', 'spoon' => 'round'], $list);
 
-        $list = DB::collection('items')->lists('name', '_id');
+        $list = DB::collection('items')->pluck('name', '_id')->toArray();
         $this->assertEquals(4, count($list));
         $this->assertEquals(24, strlen(key($list)));
     }
@@ -418,6 +417,22 @@ class QueryBuilderTest extends TestCase
         $this->assertEquals(6, DB::collection('items')->min('amount.hidden'));
         $this->assertEquals(35, DB::collection('items')->max('amount.hidden'));
         $this->assertEquals(16.25, DB::collection('items')->avg('amount.hidden'));
+    }
+
+    public function testSubdocumentArrayAggregate()
+    {
+        DB::collection('items')->insert([
+            ['name' => 'knife', 'amount' => [['hidden' => 10, 'found' => 3], ['hidden' => 5, 'found' => 2]]],
+            ['name' => 'fork',  'amount' => [['hidden' => 35, 'found' => 12], ['hidden' => 7, 'found' => 17], ['hidden' => 1, 'found' => 19]]],
+            ['name' => 'spoon', 'amount' => [['hidden' => 14, 'found' => 21]]],
+            ['name' => 'teaspoon', 'amount' => []],
+        ]);
+
+        $this->assertEquals(72, DB::collection('items')->sum('amount.*.hidden'));
+        $this->assertEquals(6, DB::collection('items')->count('amount.*.hidden'));
+        $this->assertEquals(1, DB::collection('items')->min('amount.*.hidden'));
+        $this->assertEquals(35, DB::collection('items')->max('amount.*.hidden'));
+        $this->assertEquals(12, DB::collection('items')->avg('amount.*.hidden'));
     }
 
     public function testUpsert()
