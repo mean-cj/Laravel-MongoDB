@@ -9,6 +9,7 @@ use Jenssegers\Mongodb\Relations\EmbedsMany;
 use Jenssegers\Mongodb\Relations\EmbedsOne;
 use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDateTime;
+use Illuminate\Support\Str;
 
 abstract class Model extends BaseModel
 {
