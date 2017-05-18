@@ -47,4 +47,22 @@ class BelongsTo extends \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return property_exists($this, 'ownerKey') ? $this->ownerKey : $this->otherKey;
     }
+	 /**
+     * Get the key for comparing against the parent key in "has" query.
+     *
+     * @return string
+     */
+    public function getHasCompareKey()
+    {
+		return $this->getOwnerKey();
+    }
+    /**
+     * Get the key for comparing against the parent key in "has" query.
+     *
+     * @return string
+     */
+    public function getForeignKeyName()
+    {
+        return $this->foreignKey;
+    }
 }
